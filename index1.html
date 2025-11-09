@@ -3,12 +3,11 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Auto-loading Content + Staticman Comments</title>
+  <title>Auto Content + Staticman Comments</title>
   <style>
     body { font-family: system-ui, Arial, sans-serif; background:#f7fafc; color:#0f172a; padding:20px; max-width:960px; margin:0 auto;}
     header { display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;}
     .card { background:white; border-radius:8px; box-shadow:0 6px 20px rgba(2,6,23,0.08); padding:18px; margin-bottom:18px;}
-    .content-item h2 {margin-top:0;}
     .comments { margin-top:14px; border-top:1px dashed #e6edf3; padding-top:12px;}
     label { display:block; margin:8px 0 4px; font-weight:600; }
     input[type="text"], textarea { width:100%; padding:8px; border-radius:6px; border:1px solid #dbe7f0; }
@@ -20,28 +19,22 @@
 </head>
 <body>
   <header>
-    <h1>Content Hub</h1>
-    <div>
-      <a href="https://github.com/yan-shun-180" target="_blank" rel="noopener">View your GitHub ↗</a>
-    </div>
+    <h1>Auto Content Viewer</h1>
+    <a href="https://github.com/yan-shun-180" target="_blank" rel="noopener">View GitHub ↗</a>
   </header>
 
   <main id="contentRoot">
-    <p class="muted">Loading content…</p>
+    <p>Loading content…</p>
   </main>
 
   <script>
-  // ===========================
   // CONFIG
-  // ===========================
-  const STATICMAN_API = "https://staticman3.herokuapp.com/v3/entry"; 
-  const GITHUB_USER = "yan-shun-180"; // your GitHub username
-  const GITHUB_REPO = "welcoming_users_page"; // your repo name
-  const GITHUB_BRANCH = "main"; // branch name
+  const STATICMAN_API = "https://staticman3.herokuapp.com/v3/entry";
+  const GITHUB_USER = "yan-shun-180";
+  const GITHUB_REPO = "welcoming_users_page";
+  const GITHUB_BRANCH = "main";
 
-  // ===========================
-  // helpers
-  // ===========================
+  // Helpers
   function slugFromFilename(filename){
     const n = filename.replace(/\\/g,'/').split('/').pop();
     return n.replace(/\.[^/.]+$/, "");
@@ -49,86 +42,91 @@
 
   async function loadDataTxt(){
     const r = await fetch('data.txt');
-    if (!r.ok) throw new Error('Failed fetching data.txt: ' + r.status);
+    if (!r.ok) throw new Error('Failed to load data.txt');
     const txt = await r.text();
     return txt.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
   }
 
-  async function fetchFile(path){
-    const r = await fetch(path, {cache: "no-store"});
-    if (!r.ok) {
-      console.warn('Failed to load', path);
-      return `<div class="card">Failed to load ${path}</div>`;
-    }
+  async function fetchFileContent(path){
+    const r = await fetch(path, {cache:"no-store"});
+    if (!r.ok) throw new Error('Cannot load file: ' + path);
     return await r.text();
   }
 
-  // ===========================
-  // Staticman form creation
-  // ===========================
-  function createStaticmanFormHtml(slug){
-    const action = `${STATICMAN_API}/${encodeURIComponent(GITHUB_USER)}/${encodeURIComponent(GITHUB_REPO)}/${encodeURIComponent(GITHUB_BRANCH)}/comments`;
+  // Create Staticman comment form
+  function createCommentForm(slug){
+    const action = `${STATICMAN_API}/${GITHUB_USER}/${GITHUB_REPO}/${GITHUB_BRANCH}/comments`;
     return `
-      <form class="staticman-form" method="POST" action="${action}">
+      <form method="POST" action="${action}">
         <input type="hidden" name="options[slug]" value="${slug}">
-        <label for="name-${slug}">Name</label>
-        <input id="name-${slug}" name="fields[name]" type="text" placeholder="Your name" required>
-        <label for="message-${slug}">Comment</label>
-        <textarea id="message-${slug}" name="fields[message]" rows="3" placeholder="Write a comment..." required></textarea>
-        <button type="submit">Post comment</button>
+        <label>Name</label>
+        <input name="fields[name]" type="text" placeholder="Your name" required>
+        <label>Comment</label>
+        <textarea name="fields[message]" rows="3" placeholder="Write a comment..." required></textarea>
+        <button type="submit">Post Comment</button>
       </form>
     `;
   }
 
-  // ===========================
-  // Try loading existing comments
-  // ===========================
-  async function tryLoadCommentsForSlug(slug){
+  // Load and display comments (if JSON exists)
+  async function loadComments(slug, target){
     const url = `_data/comments/${slug}/comments.json`;
     try {
-      const r = await fetch(url, {cache: "no-store"});
-      if (!r.ok) return null;
-      return await r.json();
-    } catch(e){ return null; }
-  }
-
-  function renderContentCard(contentHTML, filename){
-    const slug = slugFromFilename(filename);
-    const wrapper = document.createElement('div');
-    wrapper.className = 'card';
-    wrapper.innerHTML = `
-      <div class="content-block">${contentHTML}</div>
-      <div class="comments" id="comments-${slug}">
-        <h3>Comments</h3>
-        ${createStaticmanFormHtml(slug)}
-        <div class="comment-list" id="comment-list-${slug}">Loading comments…</div>
-      </div>
-    `;
-    (async ()=>{
-      const commentsArea = wrapper.querySelector(`#comment-list-${slug}`);
-      const comments = await tryLoadCommentsForSlug(slug);
-      if (!comments) { commentsArea.innerHTML = '<div class="meta">Comments appear after site rebuild.</div>'; return; }
-      if (comments.length === 0) { commentsArea.innerHTML = '<div class="meta">No comments yet — be first!</div>'; return; }
-      commentsArea.innerHTML = comments.map(c => `<div class="comment"><div>${c.message}</div><div class="meta">— ${c.name} • ${c.date}</div></div>`).join('');
-    })();
-    return wrapper;
-  }
-
-  (async function main(){
-    try {
-      const list = await loadDataTxt();
-      const root = document.getElementById('contentRoot');
-      root.innerHTML = '';
-      for (const filename of list){
-        const content = await fetchFile(filename);
-        const card = renderContentCard(content, filename);
-        root.appendChild(card);
+      const r = await fetch(url);
+      if (!r.ok) {
+        target.innerHTML = '<div class="meta">Comments will appear after approval or rebuild.</div>';
+        return;
       }
-    } catch(err){
-      console.error(err);
-      document.getElementById('contentRoot').innerHTML = `<div class="card">Error: ${err.message}</div>`;
+      const comments = await r.json();
+      if (!comments.length) {
+        target.innerHTML = '<div class="meta">No comments yet — be first!</div>';
+        return;
+      }
+      target.innerHTML = comments.map(c => `
+        <div class="comment">
+          <div>${c.message}</div>
+          <div class="meta">— ${c.name} • ${c.date}</div>
+        </div>
+      `).join('');
+    } catch {
+      target.innerHTML = '<div class="meta">Comments unavailable.</div>';
     }
-  })();
+  }
+
+  async function loadContent(){
+    const root = document.getElementById("contentRoot");
+    root.innerHTML = '';
+    const files = await loadDataTxt();
+
+    for (const file of files) {
+      try {
+        const html = await fetchFileContent(file);
+        const slug = slugFromFilename(file);
+
+        const div = document.createElement('div');
+        div.className = "card";
+        div.innerHTML = `
+          <div class="content-block">${html}</div>
+          <div class="comments">
+            <h3>Comments</h3>
+            ${createCommentForm(slug)}
+            <div id="comment-list-${slug}" class="comment-list">Loading comments…</div>
+          </div>
+        `;
+        root.appendChild(div);
+
+        const listDiv = document.getElementById(`comment-list-${slug}`);
+        await loadComments(slug, listDiv);
+      } catch(err) {
+        const errorDiv = document.createElement('div');
+        errorDiv.className = "card";
+        errorDiv.innerHTML = `<p>Error loading ${file}: ${err.message}</p>`;
+        root.appendChild(errorDiv);
+      }
+    }
+  }
+
+  loadContent();
   </script>
 </body>
 </html>
