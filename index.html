@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Welcome to Our App 💫</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      background: linear-gradient(135deg, #6EE7B7, #3B82F6, #9333EA);
+      background-size: 400% 400%;
+      animation: gradientShift 10s ease infinite;
+      color: white;
+      font-family: 'Poppins', sans-serif;
+      text-align: center;
+    }
+    @keyframes gradientShift {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+    h1 {
+      font-size: 3rem;
+      margin-top: 100px;
+      animation: fadeIn 2s ease-in-out;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .button {
+      background-color: rgba(255, 255, 255, 0.2);
+      border: 2px solid white;
+      border-radius: 50%;
+      font-size: 2.5rem;
+      padding: 20px;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+    .button:hover {
+      transform: scale(1.2);
+      background-color: rgba(255, 255, 255, 0.4);
+    }
+    p {
+      margin-top: 20px;
+      font-size: 1.2rem;
+      opacity: 0.9;
+    }
+  </style>
+</head>
+<body>
+  <h1>🌟 Welcome to Our App 🌟</h1>
+  <p>We’re truly grateful to have you here. You are the reason we smile every day. 💖</p>
+  <p>Relax, explore, and let happiness follow you everywhere you go. ✨</p>
+
+  <div style="margin-top:60px;">
+    <a href="jokes.html" class="button">😂</a>
+  </div>
+
+  <p style="margin-top:40px;">Click the emoji above to enter our laughter zone! 🎉</p>
+</body>
+</html>
