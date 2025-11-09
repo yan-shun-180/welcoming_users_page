@@ -55,7 +55,7 @@
 
   // Create Staticman comment form
   function createCommentForm(slug){
-    const action = `${STATICMAN_API}/${GITHUB_USER}/${GITHUB_REPO}/${GITHUB_BRANCH}/comments`;
+    const action = `${STATICMAN_API}/${encodeURIComponent(GITHUB_USER)}/${encodeURIComponent(GITHUB_REPO)}/${encodeURIComponent(GITHUB_BRANCH)}/comments`;
     return `
       <form method="POST" action="${action}">
         <input type="hidden" name="options[slug]" value="${slug}">
@@ -68,7 +68,7 @@
     `;
   }
 
-  // Load and display comments (if JSON exists)
+  // Load comments
   async function loadComments(slug, target){
     const url = `_data/comments/${slug}/comments.json`;
     try {
@@ -93,12 +93,14 @@
     }
   }
 
+  // Non-blocking content loading
   async function loadContent(){
     const root = document.getElementById("contentRoot");
     root.innerHTML = '';
     const files = await loadDataTxt();
 
-    for (const file of files) {
+    // Load all files in parallel
+    const promises = files.map(async file => {
       try {
         const html = await fetchFileContent(file);
         const slug = slugFromFilename(file);
@@ -115,15 +117,17 @@
         `;
         root.appendChild(div);
 
-        const listDiv = document.getElementById(`comment-list-${slug}`);
-        await loadComments(slug, listDiv);
+        const listDiv = div.querySelector(`#comment-list-${slug}`);
+        loadComments(slug, listDiv);
       } catch(err) {
         const errorDiv = document.createElement('div');
         errorDiv.className = "card";
         errorDiv.innerHTML = `<p>Error loading ${file}: ${err.message}</p>`;
         root.appendChild(errorDiv);
       }
-    }
+    });
+
+    await Promise.all(promises); // ensures all are loaded
   }
 
   loadContent();
