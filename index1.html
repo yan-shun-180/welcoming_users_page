@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Auto-loading Content + Staticman Comments</title>
+  <style>
+    body { font-family: system-ui, Arial, sans-serif; background:#f7fafc; color:#0f172a; padding:20px; max-width:960px; margin:0 auto;}
+    header { display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;}
+    .card { background:white; border-radius:8px; box-shadow:0 6px 20px rgba(2,6,23,0.08); padding:18px; margin-bottom:18px;}
+    .content-item h2 {margin-top:0;}
+    .comments { margin-top:14px; border-top:1px dashed #e6edf3; padding-top:12px;}
+    label { display:block; margin:8px 0 4px; font-weight:600; }
+    input[type="text"], textarea { width:100%; padding:8px; border-radius:6px; border:1px solid #dbe7f0; }
+    button { margin-top:8px; padding:8px 12px; border-radius:8px; border:none; background:#0ea5e9; color:white; cursor:pointer;}
+    .comment-list { margin-top:12px; background:#fbfdff; padding:8px; border-radius:6px; }
+    .comment { padding:6px 8px; border-bottom:1px solid #edf6fb; }
+    .meta { font-size:12px; color:#64748b; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Content Hub</h1>
+    <div>
+      <!-- example "View GitHub account" button that opens user's GitHub in CCT from app -->
+      <a href="https://github.com/" target="_blank" rel="noopener">View your GitHub account ↗</a>
+    </div>
+  </header>
+
+  <main id="contentRoot">
+    <p class="muted">Loading content…</p>
+  </main>
+
+  <script>
+  // ===========================
+  // CONFIG: change these values
+  // ===========================
+  const STATICMAN_API = "https://staticman.net/v3/entry"; 
+  // Note: if you run your own Staticman instance, change above to your instance base URL
+  const GITHUB_USER = "YOUR_GITHUB_USERNAME"; // repo owner username
+  const GITHUB_REPO = "YOUR_REPO_NAME";       // repo name where this site lives
+  const GITHUB_BRANCH = "main";               // branch Staticman should target
+
+  // ===========================
+  // utility helpers
+  // ===========================
+  function slugFromFilename(filename){
+    const n = filename.replace(/\\/g,'/').split('/').pop();
+    return n.replace(/\.[^/.]+$/, ""); // remove extension
+  }
+
+  async function loadDataTxt(){
+    const r = await fetch('data.txt');
+    if (!r.ok) throw new Error('Failed fetching data.txt: ' + r.status);
+    const txt = await r.text();
+    return txt.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+  }
+
+  async function fetchFile(path){
+    const r = await fetch(path, {cache: "no-store"});
+    if (!r.ok) {
+      console.warn('Failed to load', path);
+      return `<div class="card">Failed to load ${path}</div>`;
+    }
+    return await r.text();
+  }
+
+  // create the Staticman form HTML for a given slug
+  function createStaticmanFormHtml(slug){
+    // The form posts to: {STATICMAN_API}/{GITHUB_USER}/{GITHUB_REPO}/{GITHUB_BRANCH}/comments
+    // Fields: options[slug] => unique id per content, fields[name], fields[email] optional, fields[message]
+    const action = `${STATICMAN_API}/${encodeURIComponent(GITHUB_USER)}/${encodeURIComponent(GITHUB_REPO)}/${encodeURIComponent(GITHUB_BRANCH)}/comments`;
+    return `
+      <form class="staticman-form" method="POST" action="${action}">
+        <input type="hidden" name="options[slug]" value="${slug}">
+        <label for="name-${slug}">Name</label>
+        <input id="name-${slug}" name="fields[name]" type="text" placeholder="Your name" required>
+        <label for="message-${slug}">Comment</label>
+        <textarea id="message-${slug}" name="fields[message]" rows="3" placeholder="Write a comment..." required></textarea>
+        <button type="submit">Post comment</button>
+      </form>
+    `;
+  }
+
+  // Simple client-side function to load and display existing comments (if you store comments as JSON or HTML).
+  // With Staticman comments as files, easiest is to render comments via your static site generator during build.
+  // But here is a small runtime fetch attempt for merged comment list (optional).
+  async function tryLoadCommentsForSlug(slug){
+    // If you want to fetch a generated JSON comment list, you would provide a URL that your build creates.
+    // This demo expects a file at `_data/comments/<slug>/comments.json` if you produce such a file during builds.
+    const url = `_data/comments/${slug}/comments.json`;
+    try {
+      const r = await fetch(url, {cache: "no-store"});
+      if (!r.ok) return null;
+      return await r.json();
+    } catch(e){ return null; }
+  }
+
+  // Render one content block: contentHTML plus a staticman form
+  function renderContentCard(contentHTML, filename){
+    const slug = slugFromFilename(filename);
+    const wrapper = document.createElement('div');
+    wrapper.className = 'card';
+    wrapper.innerHTML = `
+      <div class="content-block">${contentHTML}</div>
+      <div class="comments" id="comments-${slug}">
+        <h3>Comments</h3>
+        ${createStaticmanFormHtml(slug)}
+        <div class="comment-list" id="comment-list-${slug}">Loading comments…</div>
+      </div>
+    `;
+    // load comments JSON if available
+    (async ()=>{
+      const commentsArea = wrapper.querySelector(`#comment-list-${slug}`);
+      const comments = await tryLoadCommentsForSlug(slug);
+      if (!comments) { commentsArea.innerHTML = '<div class="meta">Comments will appear after publish (site rebuild).</div>'; return; }
+      if (comments.length === 0) { commentsArea.innerHTML = '<div class="meta">No comments yet — be first!</div>'; return; }
+      commentsArea.innerHTML = comments.map(c => `<div class="comment"><div>${c.message}</div><div class="meta">— ${c.name} • ${c.date}</div></div>`).join('');
+    })();
+    return wrapper;
+  }
+
+  // Main: load data.txt, then each file, then render
+  (async function main(){
+    try {
+      const list = await loadDataTxt();
+      const root = document.getElementById('contentRoot');
+      root.innerHTML = '';
+      for (const filename of list){
+        const content = await fetchFile(filename);
+        const card = renderContentCard(content, filename);
+        root.appendChild(card);
+      }
+    } catch(err){
+      console.error(err);
+      document.getElementById('contentRoot').innerHTML = `<div class="card">Error: ${err.message}</div>`;
+    }
+  })();
+  </script>
+</body>
+</html>

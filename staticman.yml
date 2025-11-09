@@ -1,0 +1,52 @@
+comments:
+  # Each comment will be saved in this path inside your repository
+  path: "_data/comments/{options.slug}"
+  branch: "main"
+  format: "yaml"
+
+  # Whether you want manual approval or automatic
+  moderation: false   # false = auto-publish comments
+
+  # Fields the user must fill out
+  requiredFields: ["name", "message"]
+
+  # Fields allowed in the comment form
+  allowedFields: ["name", "email", "message"]
+
+  # Transformations for sensitive data (like hashing emails)
+  transforms:
+    email: md5
+
+  # Automatically add a date field when a comment is created
+  generatedFields:
+    date:
+      type: date
+      options:
+        format: iso8601
+
+# ===============================
+# General Staticman Configuration
+# ===============================
+
+# The GitHub username where the repository is hosted
+# (yours is 'yan-shun-180')
+name: "Staticman Comments for Welcoming Users Page"
+github_user: "yan-shun-180"
+
+# The repository where Staticman will write comments
+github_repository: "welcoming_users_page"
+
+# Branch to commit comment files
+branch: "main"
+
+# The format for stored comment files
+format: "yaml"
+
+# Optional email notification settings (can skip if not needed)
+notifications:
+  enabled: false
+
+# Optional: Set reCAPTCHA if you want to protect from spam
+# recaptcha:
+#   siteKey: "your-site-key"
+#   secret: "your-secret-key"
