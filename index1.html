@@ -22,8 +22,7 @@
   <header>
     <h1>Content Hub</h1>
     <div>
-      <!-- example "View GitHub account" button that opens user's GitHub in CCT from app -->
-      <a href="https://github.com/" target="_blank" rel="noopener">View your GitHub account ↗</a>
+      <a href="https://github.com/yan-shun-180" target="_blank" rel="noopener">View your GitHub ↗</a>
     </div>
   </header>
 
@@ -33,20 +32,19 @@
 
   <script>
   // ===========================
-  // CONFIG: change these values
+  // CONFIG
   // ===========================
-  const STATICMAN_API = "https://staticman.net/v3/entry"; 
-  // Note: if you run your own Staticman instance, change above to your instance base URL
-  const GITHUB_USER = "YOUR_GITHUB_USERNAME"; // repo owner username
-  const GITHUB_REPO = "YOUR_REPO_NAME";       // repo name where this site lives
-  const GITHUB_BRANCH = "main";               // branch Staticman should target
+  const STATICMAN_API = "https://staticman3.herokuapp.com/v3/entry"; 
+  const GITHUB_USER = "yan-shun-180"; // your GitHub username
+  const GITHUB_REPO = "welcoming_users_page"; // your repo name
+  const GITHUB_BRANCH = "main"; // branch name
 
   // ===========================
-  // utility helpers
+  // helpers
   // ===========================
   function slugFromFilename(filename){
     const n = filename.replace(/\\/g,'/').split('/').pop();
-    return n.replace(/\.[^/.]+$/, ""); // remove extension
+    return n.replace(/\.[^/.]+$/, "");
   }
 
   async function loadDataTxt(){
@@ -65,10 +63,10 @@
     return await r.text();
   }
 
-  // create the Staticman form HTML for a given slug
+  // ===========================
+  // Staticman form creation
+  // ===========================
   function createStaticmanFormHtml(slug){
-    // The form posts to: {STATICMAN_API}/{GITHUB_USER}/{GITHUB_REPO}/{GITHUB_BRANCH}/comments
-    // Fields: options[slug] => unique id per content, fields[name], fields[email] optional, fields[message]
     const action = `${STATICMAN_API}/${encodeURIComponent(GITHUB_USER)}/${encodeURIComponent(GITHUB_REPO)}/${encodeURIComponent(GITHUB_BRANCH)}/comments`;
     return `
       <form class="staticman-form" method="POST" action="${action}">
@@ -82,12 +80,10 @@
     `;
   }
 
-  // Simple client-side function to load and display existing comments (if you store comments as JSON or HTML).
-  // With Staticman comments as files, easiest is to render comments via your static site generator during build.
-  // But here is a small runtime fetch attempt for merged comment list (optional).
+  // ===========================
+  // Try loading existing comments
+  // ===========================
   async function tryLoadCommentsForSlug(slug){
-    // If you want to fetch a generated JSON comment list, you would provide a URL that your build creates.
-    // This demo expects a file at `_data/comments/<slug>/comments.json` if you produce such a file during builds.
     const url = `_data/comments/${slug}/comments.json`;
     try {
       const r = await fetch(url, {cache: "no-store"});
@@ -96,7 +92,6 @@
     } catch(e){ return null; }
   }
 
-  // Render one content block: contentHTML plus a staticman form
   function renderContentCard(contentHTML, filename){
     const slug = slugFromFilename(filename);
     const wrapper = document.createElement('div');
@@ -109,18 +104,16 @@
         <div class="comment-list" id="comment-list-${slug}">Loading comments…</div>
       </div>
     `;
-    // load comments JSON if available
     (async ()=>{
       const commentsArea = wrapper.querySelector(`#comment-list-${slug}`);
       const comments = await tryLoadCommentsForSlug(slug);
-      if (!comments) { commentsArea.innerHTML = '<div class="meta">Comments will appear after publish (site rebuild).</div>'; return; }
+      if (!comments) { commentsArea.innerHTML = '<div class="meta">Comments appear after site rebuild.</div>'; return; }
       if (comments.length === 0) { commentsArea.innerHTML = '<div class="meta">No comments yet — be first!</div>'; return; }
       commentsArea.innerHTML = comments.map(c => `<div class="comment"><div>${c.message}</div><div class="meta">— ${c.name} • ${c.date}</div></div>`).join('');
     })();
     return wrapper;
   }
 
-  // Main: load data.txt, then each file, then render
   (async function main(){
     try {
       const list = await loadDataTxt();
